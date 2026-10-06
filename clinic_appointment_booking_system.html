@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediSync - Smart Clinic Appointment Booking System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        brand: {
+                            50: '#f0fdfa', 100: '#ccfbf1', 200: '#99f6e4',
+                            500: '#14b8a6', 600: '#0d9488', 700: '#0f766e', 800: '#115e59'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col selection:bg-brand-500 selection:text-white">
+
+    <!-- Hackathon Demo Control Bar -->
+    <header class="bg-slate-900 text-white py-2 px-4 shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center text-xs gap-2">
+            <div class="flex items-center gap-2">
+                <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+                <span class="font-medium text-slate-300">Hackathon Mode:</span>
+                <span id="activeRoleBadge" class="bg-brand-600 text-white font-bold px-2 py-0.5 rounded text-[11px]">Patient View</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-slate-400 hidden sm:inline">Switch Role View:</span>
+                <button onclick="switchRole('patient')" id="btnRolePatient" class="px-3 py-1 rounded-md font-semibold bg-brand-600 text-white transition hover:bg-brand-500 shadow-sm flex items-center gap-1.5">
+                    <i class="fa-solid fa-user-injured"></i> Patient Portal
+                </button>
+                <button onclick="switchRole('staff')" id="btnRoleStaff" class="px-3 py-1 rounded-md font-semibold bg-slate-800 text-slate-300 transition hover:bg-slate-700 hover:text-white flex items-center gap-1.5">
+                    <i class="fa-solid fa-user-doctor"></i> Clinic Staff Dashboard
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <nav class="bg-white border-b border-slate-200 sticky top-9 z-30 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <!-- Brand Logo -->
+                <div class="flex items-center gap-3 cursor-pointer" onclick="switchRole('patient')">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-700 via-brand-600 to-teal-400 flex items-center justify-center text-white shadow-md">
+                        <i class="fa-solid fa-house-medical text-xl"></i>
+                    </div>
+                    <div>
+                        <span class="font-extrabold text-xl tracking-tight text-slate-900">Medi<span class="text-brand-600">Sync</span></span>
+                        <span class="text-[10px] block text-slate-400 -mt-1 font-semibold uppercase tracking-wider">Smart Clinic Portal</span>
+                    </div>
+                </div>
+
+                <!-- Patient Tabs -->
+                <div id="patientNav" class="hidden md:flex items-center gap-6">
+                    <button onclick="showPatientTab('doctors')" id="pNavDoctors" class="font-semibold text-brand-600 border-b-2 border-brand-600 py-4 px-1 text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-user-doctor"></i> Find Doctors
+                    </button>
+                    <button onclick="showPatientTab('appointments')" id="pNavAppointments" class="font-semibold text-slate-500 hover:text-slate-800 py-4 px-1 text-sm flex items-center gap-2 transition">
+                        <i class="fa-solid fa-calendar-check"></i> My Appointments
+                        <span id="patientBadgeCount" class="bg-brand-100 text-brand-700 font-bold px-2 py-0.5 rounded-full text-xs">0</span>
+                    </button>
+                </div>
+
+                <!-- Staff Tabs -->
+                <div id="staffNav" class="hidden md:flex items-center gap-6">
+                    <button onclick="showStaffTab('queue')" id="sNavQueue" class="font-semibold text-brand-600 border-b-2 border-brand-600 py-4 px-1 text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-list-check"></i> Daily Queue & Appointments
+                    </button>
+                    <button onclick="showStaffTab('schedules')" id="sNavSchedules" class="font-semibold text-slate-500 hover:text-slate-800 py-4 px-1 text-sm flex items-center gap-2 transition">
+                        <i class="fa-solid fa-calendar-days"></i> Doctor Schedules
+                    </button>
+                </div>
+
+                <!-- Logged in User Bar -->
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2 bg-slate-100 py-1.5 px-3 rounded-full border border-slate-200">
+                        <i id="userAvatarIcon" class="fa-solid fa-circle-user text-brand-600 text-lg"></i>
+                        <span id="currentUserName" class="text-xs font-bold text-slate-700">John Doe</span>
+                    </div>
+                    <button onclick="openAuthModal()" class="text-xs bg-slate-900 text-white hover:bg-brand-600 font-semibold px-3 py-1.5 rounded-lg transition shadow-xs">
+                        <i class="fa-solid fa-right-to-bracket mr-1"></i> Account
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+
+        <!-- ================= PATIENT SECTION ================= -->
+        <section id="patientSection" class="space-y-6">
+            
+            <!-- Banner -->
+            <div class="bg-gradient-to-r from-brand-800 via-brand-600 to-teal-500 rounded-2xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
+                <div class="relative z-10 max-w-2xl">
+                    <span class="bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider backdrop-blur-xs">Zero Waiting Time</span>
+                    <h1 class="text-2xl sm:text-3xl font-extrabold mt-3 leading-tight">Book Doctors Fast & Prevent Clinic Queue Delays</h1>
+                    <p class="text-brand-100 mt-2 text-sm">Select from qualified specialists, view real-time slot availability, and receive instant confirmation without double-booking.</p>
+                </div>
+                <i class="fa-solid fa-stethoscope absolute -right-6 -bottom-6 text-white/10 text-9xl pointer-events-none"></i>
+            </div>
+
+            <!-- PATIENT TAB 1: DOCTOR DIRECTORY -->
+            <div id="pTabDoctors" class="space-y-6">
+                <!-- Search & Filters -->
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row gap-4 items-center justify-between">
+                    <div class="relative w-full md:w-96">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-slate-400"></i>
+                        <input type="text" id="doctorSearch" oninput="filterDoctors()" placeholder="Search doctor by name or specialty..." 
+                            class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                    </div>
+                    <div class="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+                        <span class="text-xs font-bold text-slate-500 whitespace-nowrap">Specialty:</span>
+                        <select id="specialtyFilter" onchange="filterDoctors()" class="bg-slate-50 border border-slate-200 rounded-xl text-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-brand-500 font-semibold text-slate-700">
+                            <option value="ALL">All Specialties</option>
+                            <option value="General Medicine">General Medicine</option>
+                            <option value="Pediatrics">Pediatrics</option>
+                            <option value="Dermatology">Dermatology</option>
+                            <option value="Cardiology">Cardiology</option>
+                            <option value="Orthopedics">Orthopedics</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Doctors List Grid -->
+                <div id="doctorGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Dynamic doctor cards injected here -->
+                </div>
+            </div>
+
+            <!-- PATIENT TAB 2: MY APPOINTMENTS -->
+            <div id="pTabAppointments" class="hidden space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-xs gap-3">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">My Scheduled Appointments</h2>
+                        <p class="text-xs text-slate-500">Track and manage your upcoming consultations</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="filterPatientAppointments('ALL')" class="p-apt-filter-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-brand-50 text-brand-700 border border-brand-200" data-filter="ALL">All</button>
+                        <button onclick="filterPatientAppointments('Upcoming')" class="p-apt-filter-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 border border-slate-200 hover:bg-slate-50" data-filter="Upcoming">Upcoming</button>
+                        <button onclick="filterPatientAppointments('Completed')" class="p-apt-filter-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 border border-slate-200 hover:bg-slate-50" data-filter="Completed">Completed</button>
+                    </div>
+                </div>
+
+                <div id="patientAppointmentsList" class="space-y-4">
+                    <!-- Dynamic user appointments injected here -->
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ================= STAFF / CLINIC DASHBOARD SECTION ================= -->
+        <section id="staffSection" class="hidden space-y-6">
+            
+            <!-- Staff KPI Cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-bold uppercase text-slate-400 tracking-wider">Total Today</p>
+                        <h3 id="kpiTotalToday" class="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1">0</h3>
+                        <p class="text-xs text-brand-600 mt-1 font-medium"><i class="fa-solid fa-calendar-day mr-1"></i>Scheduled</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-bold uppercase text-slate-400 tracking-wider">In Queue</p>
+                        <h3 id="kpiConfirmed" class="text-2xl sm:text-3xl font-extrabold text-amber-600 mt-1">0</h3>
+                        <p class="text-xs text-slate-500 mt-1 font-medium">Waiting / Confirmed</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-hourglass-half"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-bold uppercase text-slate-400 tracking-wider">Completed</p>
+                        <h3 id="kpiCompleted" class="text-2xl sm:text-3xl font-extrabold text-emerald-600 mt-1">0</h3>
+                        <p class="text-xs text-emerald-600 mt-1 font-medium"><i class="fa-solid fa-circle-check mr-1"></i>Checked Out</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-user-check"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-bold uppercase text-slate-400 tracking-wider">Cancelled</p>
+                        <h3 id="kpiCancelled" class="text-2xl sm:text-3xl font-extrabold text-rose-600 mt-1">0</h3>
+                        <p class="text-xs text-rose-500 mt-1 font-medium">Slot Freed</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-user-slash"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STAFF TAB 1: DAILY QUEUE -->
+            <div id="sTabQueue" class="space-y-6">
+                <!-- Toolbar for Staff Table -->
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row gap-4 justify-between items-center">
+                    <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-calendar text-slate-400 text-xs"></i>
+                            <input type="date" id="staffDateFilter" onchange="renderStaffQueue()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        </div>
+                        <select id="staffDoctorFilter" onchange="renderStaffQueue()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="ALL">All Doctors</option>
+                        </select>
+                        <select id="staffStatusFilter" onchange="renderStaffQueue()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="ALL">All Statuses</option>
+                            <option value="Confirmed">Confirmed</option>
+                            <option value="In Consultation">In Consultation</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Cancelled">Cancelled</option>
+                        </select>
+                    </div>
+
+                    <button onclick="openWalkInModal()" class="w-full md:w-auto bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus"></i> Walk-In Patient Registration
+                    </button>
+                </div>
+
+                <!-- Staff Master Appointment Table -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-slate-600">
+                            <thead class="bg-slate-100 text-slate-700 font-extrabold uppercase text-[11px] tracking-wider border-b border-slate-200">
+                                <tr>
+                                    <th class="py-3.5 px-4">Time Slot</th>
+                                    <th class="py-3.5 px-4">Patient Information</th>
+                                    <th class="py-3.5 px-4">Assigned Doctor</th>
+                                    <th class="py-3.5 px-4">Reason / Complaint</th>
+                                    <th class="py-3.5 px-4">Status</th>
+                                    <th class="py-3.5 px-4 text-right">Update Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="staffAppointmentTable" class="divide-y divide-slate-200">
+                                <!-- Dynamic rows injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STAFF TAB 2: DOCTOR SCHEDULE MANAGER -->
+            <div id="sTabSchedules" class="hidden space-y-6">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">Doctor Working Schedules & Days</h2>
+                        <p class="text-xs text-slate-500">Configure clinic availability to power automated slot booking</p>
+                    </div>
+                    <button onclick="openAddDoctorModal()" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-2">
+                        <i class="fa-solid fa-user-plus"></i> Add New Doctor Profile
+                    </button>
+                </div>
+
+                <div id="staffDoctorSchedulesList" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Dynamic schedules injected here -->
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- ================= BOOKING MODAL (PATIENT) ================= -->
+    <div id="bookingModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <!-- Modal Header -->
+            <div class="bg-brand-600 text-white p-5 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <img id="modalDocAvatar" src="" class="w-12 h-12 rounded-xl object-cover border-2 border-white/50">
+                    <div>
+                        <h3 id="modalDocName" class="font-bold text-base">Dr. Name</h3>
+                        <p id="modalDocSpecialty" class="text-brand-100 text-xs">Specialization</p>
+                    </div>
+                </div>
+                <button onclick="closeBookingModal()" class="text-white/80 hover:text-white text-xl font-bold p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Modal Form Body -->
+            <form id="bookingForm" onsubmit="handleBookAppointment(event)" class="p-6 space-y-4">
+                <input type="hidden" id="modalDocId">
+
+                <!-- Date Picker -->
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">1. Select Date</label>
+                    <input type="date" id="bookingDate" onchange="updateAvailableTimeSlots()" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    <p id="docWorkingDaysNotice" class="text-[11px] text-brand-700 mt-1 font-semibold"></p>
+                </div>
+
+                <!-- Time Slot Grid -->
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-xs font-bold uppercase text-slate-600">2. Select Time Slot</label>
+                        <span class="text-[10px] text-emerald-600 font-bold"><i class="fa-solid fa-shield-halved mr-1"></i>Prevents Double Booking</span>
+                    </div>
+                    <div id="timeSlotContainer" class="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto custom-scrollbar p-1 border border-slate-100 rounded-xl bg-slate-50">
+                        <!-- Slots injected here -->
+                    </div>
+                    <input type="hidden" id="selectedTimeSlot" required>
+                    <p id="slotErrorText" class="text-xs text-rose-500 font-bold mt-1 hidden"></p>
+                </div>
+
+                <!-- Patient Contact Info -->
+                <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Patient Name</label>
+                        <input type="text" id="bookingPatientName" required class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-medium focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Phone Number</label>
+                        <input type="tel" id="bookingPatientPhone" placeholder="+1 555-0199" required class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-medium focus:ring-2 focus:ring-brand-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Reason for Visit / Chief Complaint</label>
+                    <textarea id="bookingReason" rows="2" placeholder="e.g., High fever, chest congestion for 2 days..." class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-brand-500"></textarea>
+                </div>
+
+                <div class="pt-3 flex gap-3">
+                    <button type="button" onclick="closeBookingModal()" class="w-1/3 py-2.5 rounded-xl border border-slate-300 text-slate-600 font-bold text-xs hover:bg-slate-100 transition">Cancel</button>
+                    <button type="submit" class="w-2/3 py-2.5 rounded-xl bg-brand-600 text-white font-extrabold text-xs hover:bg-brand-700 shadow-md transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-check"></i> Confirm Booking
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= AUTH & USER SWITCH MODAL ================= -->
+    <div id="authModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl relative">
+            <button onclick="closeAuthModal()" class="absolute right-4 top-4 text-slate-400 hover:text-slate-600">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="text-center mb-5">
+                <div class="w-12 h-12 bg-brand-100 text-brand-600 rounded-2xl flex items-center justify-center mx-auto mb-2 text-xl">
+                    <i class="fa-solid fa-user-gear"></i>
+                </div>
+                <h3 class="font-bold text-slate-900 text-base">User Registration & Login</h3>
+                <p class="text-xs text-slate-500">Select demo account or register new patient</p>
+            </div>
+
+            <!-- Auth Select Buttons -->
+            <div class="space-y-3">
+                <button onclick="selectUser('John Doe', 'john@example.com')" class="w-full flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:border-brand-500 hover:bg-brand-50 transition">
+                    <div class="text-left">
+                        <p class="font-bold text-xs text-slate-800">John Doe</p>
+                        <p class="text-[10px] text-slate-400">Patient Profile 1</p>
+                    </div>
+                    <i class="fa-solid fa-circle-check text-brand-600 text-sm"></i>
+                </button>
+                <button onclick="selectUser('Sarah Jenkins', 'sarah@example.com')" class="w-full flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:border-brand-500 hover:bg-brand-50 transition">
+                    <div class="text-left">
+                        <p class="font-bold text-xs text-slate-800">Sarah Jenkins</p>
+                        <p class="text-[10px] text-slate-400">Patient Profile 2</p>
+                    </div>
+                    <i class="fa-regular fa-circle text-slate-300 text-sm"></i>
+                </button>
+            </div>
+
+            <!-- Custom Registration Form -->
+            <form onsubmit="handleCustomRegister(event)" class="mt-4 pt-4 border-t border-slate-100 space-y-2">
+                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Quick Register Patient:</span>
+                <input type="text" id="regName" placeholder="Full Name" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs">
+                <input type="email" id="regEmail" placeholder="Email Address" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs">
+                <button type="submit" class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-xs transition">
+                    Register & Login
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= WALK-IN BOOKING MODAL (STAFF) ================= -->
+    <div id="walkInModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden">
+            <div class="bg-slate-900 text-white p-4 flex justify-between items-center">
+                <h3 class="font-bold text-sm"><i class="fa-solid fa-hospital-user mr-2"></i>Reception Walk-In Booking</h3>
+                <button onclick="closeWalkInModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="walkInForm" onsubmit="handleWalkInSubmit(event)" class="p-5 space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Select Doctor</label>
+                    <select id="walkInDoctorSelect" onchange="updateWalkInSlots()" required class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-bold">
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Date</label>
+                    <input type="date" id="walkInDate" onchange="updateWalkInSlots()" required class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-bold">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Available Time Slot</label>
+                    <select id="walkInTimeSlot" required class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-bold">
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Patient Full Name</label>
+                    <input type="text" id="walkInPatientName" required class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Phone Number</label>
+                    <input type="tel" id="walkInPatientPhone" required class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Complaint / Reason</label>
+                    <input type="text" id="walkInReason" placeholder="Walk-in consultation..." class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs">
+                </div>
+                <div class="pt-2 flex gap-2">
+                    <button type="button" onclick="closeWalkInModal()" class="w-1/2 py-2 rounded-xl border text-xs font-bold">Cancel</button>
+                    <button type="submit" class="w-1/2 py-2 bg-brand-600 text-white rounded-xl text-xs font-extrabold hover:bg-brand-700">Add to Queue</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= ADD DOCTOR MODAL (STAFF) ================= -->
+    <div id="addDoctorModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden">
+            <div class="bg-slate-900 text-white p-4 flex justify-between items-center">
+                <h3 class="font-bold text-sm"><i class="fa-solid fa-user-plus mr-2"></i>Add New Doctor Profile</h3>
+                <button onclick="closeAddDoctorModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleAddDoctor(event)" class="p-5 space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Doctor Name</label>
+                    <input type="text" id="newDocName" required placeholder="Dr. Jane Smith" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Specialization</label>
+                    <select id="newDocSpecialty" required class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-semibold">
+                        <option value="General Medicine">General Medicine</option>
+                        <option value="Pediatrics">Pediatrics</option>
+                        <option value="Dermatology">Dermatology</option>
+                        <option value="Cardiology">Cardiology</option>
+                        <option value="Orthopedics">Orthopedics</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Cabin / Room</label>
+                        <input type="text" id="newDocRoom" placeholder="Room 204" required class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Experience</label>
+                        <input type="text" id="newDocExp" placeholder="10 Yrs Exp." required class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs">
+                    </div>
+                </div>
+                <div class="pt-2 flex gap-2">
+                    <button type="button" onclick="closeAddDoctorModal()" class="w-1/2 py-2 rounded-xl border text-xs font-bold">Cancel</button>
+                    <button type="submit" class="w-1/2 py-2 bg-brand-600 text-white rounded-xl text-xs font-extrabold hover:bg-brand-700">Save Doctor</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // --- Application State ---
+        let currentRole = 'patient';
+        let currentUser = { name: 'John Doe', email: 'john@example.com' };
+
+        // Initial Doctors List
+        let doctors = [
+            {
+                id: 'doc-1',
+                name: 'Dr. Evelyn Harper',
+                specialty: 'General Medicine',
+                experience: '12 Years Exp.',
+                rating: 4.9,
+                reviews: 128,
+                room: 'Cabin 102',
+                avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80',
+                workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+                slots: ['09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '02:00 PM', '02:30 PM', '03:00 PM']
+            },
+            {
+                id: 'doc-2',
+                name: 'Dr. Marcus Vance',
+                specialty: 'Pediatrics',
+                experience: '9 Years Exp.',
+                rating: 4.8,
+                reviews: 94,
+                room: 'Cabin 105',
+                avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=150&auto=format&fit=crop&q=80',
+                workingDays: ['Mon', 'Wed', 'Fri', 'Sat'],
+                slots: ['10:00 AM', '10:30 AM', '11:30 AM', '01:00 PM', '01:30 PM', '03:30 PM']
+            },
+            {
+                id: 'doc-3',
+                name: 'Dr. Sophia Patel',
+                specialty: 'Dermatology',
+                experience: '15 Years Exp.',
+                rating: 4.9,
+                reviews: 210,
+                room: 'Cabin 201',
+                avatar: 'https://images.unsplash.com/photo-1594824813566-78a91176b63c?w=150&auto=format&fit=crop&q=80',
+                workingDays: ['Tue', 'Thu', 'Sat'],
+                slots: ['09:00 AM', '09:30 AM', '11:00 AM', '02:00 PM', '04:00 PM']
+            },
+            {
+                id: 'doc-4',
+                name: 'Dr. Robert Stirling',
+                specialty: 'Cardiology',
+                experience: '18 Years Exp.',
+                rating: 5.0,
+                reviews: 175,
+                room: 'Cabin 304',
+                avatar: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=150&auto=format&fit=crop&q=80',
+                workingDays: ['Mon', 'Tue', 'Thu'],
+                slots: ['10:00 AM', '11:00 AM', '02:00 PM', '03:00 PM']
+            }
+        ];
+
+        // Format Date Helper
+        const getTodayString = (offsetDays = 0) => {
+            const d = new Date();
+            d.setDate(d.getDate() + offsetDays);
+            return d.toISOString().split('T')[0];
+        };
+
+        const todayStr = getTodayString(0);
+        const tomorrowStr = getTodayString(1);
+
+        // Seed Appointments List
+        let appointments = [
+            {
+                id: 'APT-1001',
+                doctorId: 'doc-1',
+                doctorName: 'Dr. Evelyn Harper',
+                doctorSpecialty: 'General Medicine',
+                patientName: 'John Doe',
+                patientPhone: '+1 555-0199',
+                date: todayStr,
+                timeSlot: '09:00 AM',
+                reason: 'Routine Health Checkup',
+                status: 'Completed',
+                bookedBy: 'John Doe'
+            },
+            {
+                id: 'APT-1002',
+                doctorId: 'doc-1',
+                doctorName: 'Dr. Evelyn Harper',
+                doctorSpecialty: 'General Medicine',
+                patientName: 'David Smith',
+                patientPhone: '+1 555-0144',
+                date: todayStr,
+                timeSlot: '10:00 AM',
+                reason: 'Persistent Fever',
+                status: 'Confirmed',
+                bookedBy: 'David Smith'
+            },
+            {
+                id: 'APT-1003',
+                doctorId: 'doc-2',
+                doctorName: 'Dr. Marcus Vance',
+                doctorSpecialty: 'Pediatrics',
+                patientName: 'Sarah Jenkins',
+                patientPhone: '+1 555-0177',
+                date: todayStr,
+                timeSlot: '10:30 AM',
+                reason: 'Child Vaccination',
+                status: 'In Consultation',
+                bookedBy: 'Sarah Jenkins'
+            }
+        ];
+
+        window.onload = function() {
+            document.getElementById('staffDateFilter').value = todayStr;
+            document.getElementById('bookingDate').value = todayStr;
+            document.getElementById('bookingDate').min = todayStr;
+
+            populateStaffDoctorDropdown();
+            renderDoctors();
+            renderPatientAppointments();
+            renderStaffQueue();
+        };
+
+        function switchRole(role) {
+            currentRole = role;
+            const patientSec = document.getElementById('patientSection');
+            const staffSec = document.getElementById('staffSection');
+            const patientNav = document.getElementById('patientNav');
+            const staffNav = document.getElementById('staffNav');
+            const badge = document.getElementById('activeRoleBadge');
+            const btnPatient = document.getElementById('btnRolePatient');
+            const btnStaff = document.getElementById('btnRoleStaff');
+
+            if (role === 'patient') {
+                patientSec.classList.remove('hidden');
+                staffSec.classList.add('hidden');
+                patientNav.classList.remove('hidden');
+                patientNav.classList.add('md:flex');
+                staffNav.classList.add('hidden');
+                staffNav.classList.remove('md:flex');
+
+                badge.textContent = "Patient View";
+                badge.className = "bg-brand-600 text-white font-bold px-2 py-0.5 rounded text-[11px]";
+                btnPatient.className = "px-3 py-1 rounded-md font-semibold bg-brand-600 text-white transition hover:bg-brand-500 shadow-sm flex items-center gap-1.5";
+                btnStaff.className = "px-3 py-1 rounded-md font-semibold bg-slate-800 text-slate-300 transition hover:bg-slate-700 hover:text-white flex items-center gap-1.5";
+                
+                renderDoctors();
+                renderPatientAppointments();
+            } else {
+                patientSec.classList.add('hidden');
+                staffSec.classList.remove('hidden');
+                patientNav.classList.add('hidden');
+                patientNav.classList.remove('md:flex');
+                staffNav.classList.remove('hidden');
+                staffNav.classList.add('md:flex');
+
+                badge.textContent = "Clinic Staff View";
+                badge.className = "bg-purple-600 text-white font-bold px-2 py-0.5 rounded text-[11px]";
+                btnStaff.className = "px-3 py-1 rounded-md font-semibold bg-purple-600 text-white transition hover:bg-purple-500 shadow-sm flex items-center gap-1.5";
+                btnPatient.className = "px-3 py-1 rounded-md font-semibold bg-slate-800 text-slate-300 transition hover:bg-slate-700 hover:text-white flex items-center gap-1.5";
+
+                renderStaffQueue();
+            }
+        }
+
+        function showPatientTab(tab) {
+            const pTabDoctors = document.getElementById('pTabDoctors');
+            const pTabAppointments = document.getElementById('pTabAppointments');
+            const pNavDoctors = document.getElementById('pNavDoctors');
+            const pNavAppointments = document.getElementById('pNavAppointments');
+
+            if (tab === 'doctors') {
+                pTabDoctors.classList.remove('hidden');
+                pTabAppointments.classList.add('hidden');
+                pNavDoctors.className = "font-semibold text-brand-600 border-b-2 border-brand-600 py-4 px-1 text-sm flex items-center gap-2";
+                pNavAppointments.className = "font-semibold text-slate-500 hover:text-slate-800 py-4 px-1 text-sm flex items-center gap-2 transition";
+            } else {
+                pTabDoctors.classList.add('hidden');
+                pTabAppointments.classList.remove('hidden');
+                pNavAppointments.className = "font-semibold text-brand-600 border-b-2 border-brand-600 py-4 px-1 text-sm flex items-center gap-2";
+                pNavDoctors.className = "font-semibold text-slate-500 hover:text-slate-800 py-4 px-1 text-sm flex items-center gap-2 transition";
+                renderPatientAppointments();
+            }
+        }
+
+        function showStaffTab(tab) {
+            const sTabQueue = document.getElementById('sTabQueue');
+            const sTabSchedules = document.getElementById('sTabSchedules');
+            const sNavQueue = document.getElementById('sNavQueue');
+            const sNavSchedules = document.getElementById('sNavSchedules');
+
+            if (tab === 'queue') {
+                sTabQueue.classList.remove('hidden');
+                sTabSchedules.classList.add('hidden');
+                sNavQueue.className = "font-semibold text-brand-600 border-b-2 border-brand-600 py-4 px-1 text-sm flex items-center gap-2";
+                sNavSchedules.className = "font-semibold text-slate-500 hover:text-slate-800 py-4 px-1 text-sm flex items-center gap-2 transition";
+                renderStaffQueue();
+            } else {
+                sTabQueue.classList.add('hidden');
+                sTabSchedules.classList.remove('hidden');
+                sNavSchedules.className = "font-semibold text-brand-600 border-b-2 border-brand-600 py-4 px-1 text-sm flex items-center gap-2";
+                sNavQueue.className = "font-semibold text-slate-500 hover:text-slate-800 py-4 px-1 text-sm flex items-center gap-2 transition";
+                renderStaffSchedules();
+            }
+        }
+
+        function renderDoctors() {
+            const grid = document.getElementById('doctorGrid');
+            const searchTerm = document.getElementById('doctorSearch').value.toLowerCase();
+            const specialty = document.getElementById('specialtyFilter').value;
+
+            const filtered = doctors.filter(doc => {
+                const matchesSearch = doc.name.toLowerCase().includes(searchTerm) || doc.specialty.toLowerCase().includes(searchTerm);
+                const matchesSpecialty = specialty === 'ALL' || doc.specialty === specialty;
+                return matchesSearch && matchesSpecialty;
+            });
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-12 bg-white rounded-2xl border border-dashed border-slate-300">
+                        <i class="fa-solid fa-user-doctor text-4xl text-slate-300 mb-2"></i>
+                        <p class="font-bold text-slate-600">No doctors match your search filters</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = filtered.map(doc => `
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition p-5 flex flex-col justify-between space-y-4">
+                    <div>
+                        <div class="flex items-start gap-4">
+                            <img src="${doc.avatar}" alt="${doc.name}" class="w-16 h-16 rounded-2xl object-cover border border-slate-100 shadow-xs">
+                            <div>
+                                <span class="bg-brand-50 text-brand-700 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-brand-200">${doc.specialty}</span>
+                                <h3 class="font-bold text-slate-900 text-base mt-1">${doc.name}</h3>
+                                <p class="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                                    <i class="fa-solid fa-door-open text-slate-400"></i> ${doc.room} • ${doc.experience}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                            <div class="flex items-center gap-1 text-amber-500 font-bold">
+                                <i class="fa-solid fa-star"></i>
+                                <span>${doc.rating}</span>
+                                <span class="text-slate-400 font-normal">(${doc.reviews})</span>
+                            </div>
+                            <div class="text-slate-500 font-semibold text-[11px]">
+                                <i class="fa-regular fa-calendar-check text-brand-600 mr-1"></i>${doc.workingDays.join(', ')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="openBookingModal('${doc.id}')" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-extrabold text-xs py-2.5 px-4 rounded-xl shadow-xs transition flex items-center justify-center gap-2">
+                        <i class="fa-regular fa-calendar-plus"></i> Book Appointment
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function filterDoctors() { renderDoctors(); }
+
+        function openBookingModal(docId) {
+            const doc = doctors.find(d => d.id === docId);
+            if (!doc) return;
+
+            document.getElementById('modalDocId').value = doc.id;
+            document.getElementById('modalDocName').textContent = doc.name;
+            document.getElementById('modalDocSpecialty').textContent = `${doc.specialty} • ${doc.room}`;
+            document.getElementById('modalDocAvatar').src = doc.avatar;
+            document.getElementById('docWorkingDaysNotice').textContent = `Doctor Available Days: ${doc.workingDays.join(', ')}`;
+            
+            document.getElementById('bookingPatientName').value = currentUser.name;
+            document.getElementById('bookingPatientPhone').value = '+1 555-0199';
+            document.getElementById('selectedTimeSlot').value = '';
+
+            updateAvailableTimeSlots();
+            document.getElementById('bookingModal').classList.remove('hidden');
+        }
+
+        function closeBookingModal() { document.getElementById('bookingModal').classList.add('hidden'); }
+
+        function updateAvailableTimeSlots() {
+            const docId = document.getElementById('modalDocId').value;
+            const dateVal = document.getElementById('bookingDate').value;
+            const container = document.getElementById('timeSlotContainer');
+            const doc = doctors.find(d => d.id === docId);
+
+            if (!doc || !dateVal) return;
+
+            // Fetch already booked slots for this doctor on selected date
+            const existingBookings = appointments.filter(apt => 
+                apt.doctorId === docId && 
+                apt.date === dateVal && 
+                apt.status !== 'Cancelled'
+            ).map(apt => apt.timeSlot);
+
+            container.innerHTML = doc.slots.map(slot => {
+                const isBooked = existingBookings.includes(slot);
+                if (isBooked) {
+                    return `
+                        <button type="button" disabled class="py-2 px-1 text-[11px] font-bold rounded-lg bg-rose-50 text-rose-400 border border-rose-200 cursor-not-allowed opacity-70 flex flex-col items-center justify-center">
+                            <span>${slot}</span>
+                            <span class="text-[9px] text-rose-600 font-extrabold uppercase">Booked</span>
+                        </button>
+                    `;
+                } else {
+                    return `
+                        <button type="button" onclick="selectSlot(this, '${slot}')" class="slot-btn py-2 px-1 text-[11px] font-semibold rounded-lg bg-white border border-slate-200 text-slate-700 hover:border-brand-500 hover:text-brand-600 transition flex items-center justify-center">
+                            ${slot}
+                        </button>
+                    `;
+                }
+            }).join('');
+        }
+
+        function selectSlot(btn, slot) {
+            document.querySelectorAll('.slot-btn').forEach(b => {
+                b.className = 'slot-btn py-2 px-1 text-[11px] font-semibold rounded-lg bg-white border border-slate-200 text-slate-700 hover:border-brand-500 hover:text-brand-600 transition flex items-center justify-center';
+            });
+            btn.className = 'slot-btn py-2 px-1 text-[11px] font-bold rounded-lg bg-brand-600 text-white border border-brand-600 shadow-xs flex items-center justify-center';
+            document.getElementById('selectedTimeSlot').value = slot;
+            document.getElementById('slotErrorText').classList.add('hidden');
+        }
+
+        function handleBookAppointment(e) {
+            e.preventDefault();
+            const docId = document.getElementById('modalDocId').value;
+            const doc = doctors.find(d => d.id === docId);
+            const date = document.getElementById('bookingDate').value;
+            const timeSlot = document.getElementById('selectedTimeSlot').value;
+            const patientName = document.getElementById('bookingPatientName').value;
+            const patientPhone = document.getElementById('bookingPatientPhone').value;
+            const reason = document.getElementById('bookingReason').value || 'Consultation';
+
+            if (!timeSlot) {
+                const err = document.getElementById('slotErrorText');
+                err.textContent = "Please select an available time slot above.";
+                err.classList.remove('hidden');
+                return;
+            }
+
+            // ANTI DOUBLE-BOOKING CHECK
+            const doubleBooked = appointments.some(apt => 
+                apt.doctorId === docId && 
+                apt.date === date && 
+                apt.timeSlot === timeSlot && 
+                apt.status !== 'Cancelled'
+            );
+
+            if (doubleBooked) {
+                showToast("Double-booking prevented! Slot was taken.", "error");
+                updateAvailableTimeSlots();
+                return;
+            }
+
+            const newAppointment = {
+                id: 'APT-' + Math.floor(1000 + Math.random() * 9000),
+                doctorId: doc.id,
+                doctorName: doc.name,
+                doctorSpecialty: doc.specialty,
+                patientName: patientName,
+                patientPhone: patientPhone,
+                date: date,
+                timeSlot: timeSlot,
+                reason: reason,
+                status: 'Confirmed',
+                bookedBy: currentUser.name
+            };
+
+            appointments.push(newAppointment);
+            closeBookingModal();
+            showToast(`Appointment booked with ${doc.name} for ${timeSlot}!`, "success");
+
+            renderPatientAppointments();
+            renderStaffQueue();
+        }
+
+        let patientFilterStatus = 'ALL';
+
+        function filterPatientAppointments(status) {
+            patientFilterStatus = status;
+            document.querySelectorAll('.p-apt-filter-btn').forEach(btn => {
+                if (btn.dataset.filter === status) {
+                    btn.className = "p-apt-filter-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-brand-50 text-brand-700 border border-brand-200";
+                } else {
+                    btn.className = "p-apt-filter-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 border border-slate-200 hover:bg-slate-50";
+                }
+            });
+            renderPatientAppointments();
+        }
+
+        function renderPatientAppointments() {
+            const list = document.getElementById('patientAppointmentsList');
+            const userApts = appointments.filter(a => a.patientName.toLowerCase() === currentUser.name.toLowerCase());
+            
+            const activeCount = userApts.filter(a => a.status === 'Confirmed' || a.status === 'In Consultation').length;
+            document.getElementById('patientBadgeCount').textContent = activeCount;
+
+            const filtered = userApts.filter(a => {
+                if (patientFilterStatus === 'ALL') return true;
+                if (patientFilterStatus === 'Upcoming') return a.status === 'Confirmed' || a.status === 'In Consultation';
+                if (patientFilterStatus === 'Completed') return a.status === 'Completed';
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                list.innerHTML = `
+                    <div class="bg-white p-8 text-center rounded-2xl border border-slate-200">
+                        <i class="fa-solid fa-calendar-xmark text-4xl text-slate-300 mb-2"></i>
+                        <p class="font-bold text-slate-700 text-sm">No scheduled appointments</p>
+                        <button onclick="showPatientTab('doctors')" class="mt-4 bg-brand-600 text-white font-bold text-xs px-4 py-2 rounded-xl hover:bg-brand-700 transition">
+                            Find Doctors
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = filtered.map(apt => {
+                let statusBadge = '';
+                if (apt.status === 'Confirmed') statusBadge = '<span class="bg-amber-100 text-amber-800 text-[11px] font-bold px-2.5 py-1 rounded-full"><i class="fa-solid fa-clock mr-1"></i>Confirmed</span>';
+                else if (apt.status === 'In Consultation') statusBadge = '<span class="bg-blue-100 text-blue-800 text-[11px] font-bold px-2.5 py-1 rounded-full"><i class="fa-solid fa-spinner animate-spin mr-1"></i>In Consultation</span>';
+                else if (apt.status === 'Completed') statusBadge = '<span class="bg-emerald-100 text-emerald-800 text-[11px] font-bold px-2.5 py-1 rounded-full"><i class="fa-solid fa-check mr-1"></i>Completed</span>';
+                else statusBadge = '<span class="bg-slate-100 text-slate-600 text-[11px] font-bold px-2.5 py-1 rounded-full"><i class="fa-solid fa-ban mr-1"></i>Cancelled</span>';
+
+                const canCancel = apt.status === 'Confirmed';
+
+                return `
+                    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div class="flex items-start gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-600 text-lg font-bold">
+                                <i class="fa-solid fa-user-doctor"></i>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <h4 class="font-bold text-slate-900 text-sm">${apt.doctorName}</h4>
+                                    <span class="text-xs text-slate-400">(${apt.doctorSpecialty})</span>
+                                    ${statusBadge}
+                                </div>
+                                <div class="flex flex-wrap items-center gap-4 text-xs text-slate-500 mt-2 font-medium">
+                                    <span><i class="fa-regular fa-calendar text-brand-600 mr-1"></i>${apt.date}</span>
+                                    <span><i class="fa-regular fa-clock text-brand-600 mr-1"></i>${apt.timeSlot}</span>
+                                    <span><i class="fa-solid fa-hashtag text-slate-400 mr-1"></i>${apt.id}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        ${canCancel ? `
+                            <button onclick="cancelAppointment('${apt.id}')" class="w-full sm:w-auto px-3 py-1.5 text-xs font-bold text-rose-600 border border-rose-200 rounded-xl hover:bg-rose-50 transition flex items-center justify-center gap-1">
+                                <i class="fa-solid fa-xmark"></i> Cancel Booking
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function cancelAppointment(aptId) {
+            const apt = appointments.find(a => a.id === aptId);
+            if (apt) {
+                apt.status = 'Cancelled';
+                showToast(`Appointment ${aptId} cancelled. Slot released!`, "info");
+                renderPatientAppointments();
+                renderStaffQueue();
+            }
+        }
+
+        function populateStaffDoctorDropdown() {
+            const select = document.getElementById('staffDoctorFilter');
+            select.innerHTML = '<option value="ALL">All Doctors</option>' + 
+                doctors.map(d => `<option value="${d.id}">${d.name} (${d.specialty})</option>`).join('');
+
+            const walkInSelect = document.getElementById('walkInDoctorSelect');
+            walkInSelect.innerHTML = doctors.map(d => `<option value="${d.id}">${d.name} - ${d.specialty}</option>`).join('');
+        }
+
+        function renderStaffQueue() {
+            const selectedDate = document.getElementById('staffDateFilter').value;
+            const selectedDoc = document.getElementById('staffDoctorFilter').value;
+            const selectedStatus = document.getElementById('staffStatusFilter').value;
+            const tableBody = document.getElementById('staffAppointmentTable');
+
+            const dateAppointments = appointments.filter(a => a.date === selectedDate);
+            document.getElementById('kpiTotalToday').textContent = dateAppointments.length;
+            document.getElementById('kpiConfirmed').textContent = dateAppointments.filter(a => a.status === 'Confirmed' || a.status === 'In Consultation').length;
+            document.getElementById('kpiCompleted').textContent = dateAppointments.filter(a => a.status === 'Completed').length;
+            document.getElementById('kpiCancelled').textContent = dateAppointments.filter(a => a.status === 'Cancelled').length;
+
+            const filtered = appointments.filter(a => {
+                const matchDate = !selectedDate || a.date === selectedDate;
+                const matchDoc = selectedDoc === 'ALL' || a.doctorId === selectedDoc;
+                const matchStatus = selectedStatus === 'ALL' || a.status === selectedStatus;
+                return matchDate && matchDoc && matchStatus;
+            });
+
+            if (filtered.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center py-8 text-slate-400 font-medium">
+                            No appointments found for ${selectedDate}.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tableBody.innerHTML = filtered.map(apt => `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="py-3 px-4 font-bold text-slate-800">
+                        ${apt.timeSlot}
+                        <span class="block text-[10px] text-slate-400 font-normal">${apt.date}</span>
+                    </td>
+                    <td class="py-3 px-4">
+                        <div class="font-bold text-slate-900">${apt.patientName}</div>
+                        <div class="text-[10px] text-slate-400">${apt.patientPhone}</div>
+                    </td>
+                    <td class="py-3 px-4 font-semibold text-slate-700">
+                        ${apt.doctorName}
+                    </td>
+                    <td class="py-3 px-4 text-slate-600 max-w-xs truncate">
+                        ${apt.reason}
+                    </td>
+                    <td class="py-3 px-4">
+                        ${getStatusBadgeHTML(apt.status)}
+                    </td>
+                    <td class="py-3 px-4 text-right">
+                        <select onchange="updateAppointmentStatus('${apt.id}', this.value)" class="bg-slate-100 border border-slate-200 rounded px-2 py-1 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-brand-500">
+                            <option value="Confirmed" ${apt.status === 'Confirmed' ? 'selected' : ''}>Confirmed</option>
+                            <option value="In Consultation" ${apt.status === 'In Consultation' ? 'selected' : ''}>In Consultation</option>
+                            <option value="Completed" ${apt.status === 'Completed' ? 'selected' : ''}>Completed</option>
+                            <option value="Cancelled" ${apt.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                        </select>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function getStatusBadgeHTML(status) {
+            if (status === 'Confirmed') return '<span class="bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded">Confirmed</span>';
+            if (status === 'In Consultation') return '<span class="bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold px-2 py-0.5 rounded">In Consultation</span>';
+            if (status === 'Completed') return '<span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded">Completed</span>';
+            return '<span class="bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold px-2 py-0.5 rounded">Cancelled</span>';
+        }
+
+        function updateAppointmentStatus(aptId, newStatus) {
+            const apt = appointments.find(a => a.id === aptId);
+            if (apt) {
+                apt.status = newStatus;
+                showToast(`Appointment updated to '${newStatus}'`, "success");
+                renderStaffQueue();
+                renderPatientAppointments();
+            }
+        }
+
+        function openWalkInModal() {
+            document.getElementById('walkInDate').value = todayStr;
+            updateWalkInSlots();
+            document.getElementById('walkInModal').classList.remove('hidden');
+        }
+
+        function closeWalkInModal() { document.getElementById('walkInModal').classList.add('hidden'); }
+
+        function updateWalkInSlots() {
+            const docId = document.getElementById('walkInDoctorSelect').value;
+            const date = document.getElementById('walkInDate').value;
+            const slotSelect = document.getElementById('walkInTimeSlot');
+            const doc = doctors.find(d => d.id === docId);
+
+            if (!doc) return;
+
+            const existingBookings = appointments.filter(apt => 
+                apt.doctorId === docId && 
+                apt.date === date && 
+                apt.status !== 'Cancelled'
+            ).map(apt => apt.timeSlot);
+
+            const freeSlots = doc.slots.filter(s => !existingBookings.includes(s));
+
+            if (freeSlots.length === 0) {
+                slotSelect.innerHTML = '<option value="">No free slots for this date</option>';
+            } else {
+                slotSelect.innerHTML = freeSlots.map(s => `<option value="${s}">${s}</option>`).join('');
+            }
+        }
+
+        function handleWalkInSubmit(e) {
+            e.preventDefault();
+            const docId = document.getElementById('walkInDoctorSelect').value;
+            const doc = doctors.find(d => d.id === docId);
+            const date = document.getElementById('walkInDate').value;
+            const slot = document.getElementById('walkInTimeSlot').value;
+            const name = document.getElementById('walkInPatientName').value;
+            const phone = document.getElementById('walkInPatientPhone').value;
+            const reason = document.getElementById('walkInReason').value || 'Walk-in Consultation';
+
+            if (!slot) {
+                showToast("No time slot selected!", "error");
+                return;
+            }
+
+            appointments.push({
+                id: 'APT-' + Math.floor(1000 + Math.random() * 9000),
+                doctorId: doc.id,
+                doctorName: doc.name,
+                doctorSpecialty: doc.specialty,
+                patientName: name,
+                patientPhone: phone,
+                date: date,
+                timeSlot: slot,
+                reason: reason,
+                status: 'Confirmed',
+                bookedBy: 'Front Desk'
+            });
+
+            closeWalkInModal();
+            showToast(`Walk-in patient ${name} registered!`, "success");
+            renderStaffQueue();
+            renderPatientAppointments();
+        }
+
+        function renderStaffSchedules() {
+            const container = document.getElementById('staffDoctorSchedulesList');
+            container.innerHTML = doctors.map(doc => `
+                <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
+                    <div class="flex items-center gap-3">
+                        <img src="${doc.avatar}" class="w-12 h-12 rounded-full object-cover border border-slate-200">
+                        <div>
+                            <h4 class="font-bold text-slate-900 text-sm">${doc.name}</h4>
+                            <p class="text-xs text-brand-600 font-semibold">${doc.specialty} • ${doc.room}</p>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="text-xs font-bold text-slate-600 block mb-1">Available Days:</span>
+                        <div class="flex flex-wrap gap-1.5">
+                            ${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => {
+                                const isWorking = doc.workingDays.includes(day);
+                                return `<span class="text-[10px] px-2 py-0.5 rounded font-bold ${isWorking ? 'bg-brand-100 text-brand-700 border border-brand-300' : 'bg-slate-100 text-slate-400'}">${day}</span>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openAddDoctorModal() { document.getElementById('addDoctorModal').classList.remove('hidden'); }
+        function closeAddDoctorModal() { document.getElementById('addDoctorModal').classList.add('hidden'); }
+
+        function handleAddDoctor(e) {
+            e.preventDefault();
+            const newDoc = {
+                id: 'doc-' + (doctors.length + 1),
+                name: document.getElementById('newDocName').value,
+                specialty: document.getElementById('newDocSpecialty').value,
+                experience: document.getElementById('newDocExp').value,
+                rating: 5.0,
+                reviews: 1,
+                room: document.getElementById('newDocRoom').value,
+                avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=150&auto=format&fit=crop&q=80',
+                workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+                slots: ['09:00 AM', '10:00 AM', '11:00 AM', '02:00 PM', '03:00 PM']
+            };
+            doctors.push(newDoc);
+            closeAddDoctorModal();
+            populateStaffDoctorDropdown();
+            renderDoctors();
+            renderStaffSchedules();
+            showToast(`Doctor ${newDoc.name} added!`, "success");
+        }
+
+        function openAuthModal() { document.getElementById('authModal').classList.remove('hidden'); }
+        function closeAuthModal() { document.getElementById('authModal').classList.add('hidden'); }
+
+        function selectUser(name, email) {
+            currentUser = { name, email };
+            document.getElementById('currentUserName').textContent = name;
+            closeAuthModal();
+            showToast(`Logged in as ${name}`, "success");
+            renderPatientAppointments();
+        }
+
+        function handleCustomRegister(e) {
+            e.preventDefault();
+            const name = document.getElementById('regName').value;
+            const email = document.getElementById('regEmail').value;
+            selectUser(name, email);
+        }
+
+        function showToast(message, type = "success") {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+
+            let icon = 'fa-circle-check text-emerald-400';
+            if (type === 'error') icon = 'fa-circle-xmark text-rose-400';
+            if (type === 'info') icon = 'fa-circle-info text-sky-400';
+
+            toast.className = `p-3.5 rounded-xl shadow-xl bg-slate-900 text-white text-xs font-semibold flex items-center gap-3 transition duration-300 transform translate-y-2 pointer-events-auto border border-slate-700`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icon} text-base"></i>
+                <span class="flex-1">${message}</span>
+                <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            `;
+
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', '-translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
